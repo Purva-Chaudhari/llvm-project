@@ -84,6 +84,7 @@ public:
   void ExecuteAction() override {
     CompilerInstance &CI = getCompilerInstance();
     assert(CI.hasPreprocessor() && "No PP!");
+    llvm::errs()<<"Check 1\n";
 
     // FIXME: Move the truncation aspect of this into Sema, we delayed this till
     // here so the source manager would be initialized.
@@ -150,6 +151,9 @@ IncrementalParser::ParseOrWrapTopLevelDecl() {
   ASTContext &C = S.getASTContext();
   C.addTranslationUnitDecl();
   LastPTU.TUPart = C.getTranslationUnitDecl();
+  llvm::errs()<<"Check 1.A \n";
+  
+  
 
   // Skip previous eof due to last incremental input.
   if (P->getCurToken().is(tok::eof)) {
@@ -174,6 +178,7 @@ IncrementalParser::ParseOrWrapTopLevelDecl() {
                                                  "The consumer rejected a decl",
                                                  std::error_code());
   }
+  llvm::errs()<<"Check 2\n";
 
   DiagnosticsEngine &Diags = getCI()->getDiagnostics();
   if (Diags.hasErrorOccurred()) {
@@ -185,15 +190,20 @@ IncrementalParser::ParseOrWrapTopLevelDecl() {
     FirstTU->RedeclLink.setLatest(PreviousTU);
     C.TUDecl = PreviousTU;
     S.TUScope->setEntity(PreviousTU);
-
+    llvm::errs()<<"Check 3\n";
+    if (FirstTU->getLookupPtr() ==NULL)
+    	llvm::errs()<<"Null pointor\n";
     // Clean up the lookup table
-    if (StoredDeclsMap *Map = PreviousTU->getLookupPtr()) {
+    if (StoredDeclsMap *Map = FirstTU->getLookupPtr()) {
       for (auto I = Map->begin(); I != Map->end(); ++I) {
         StoredDeclsList &List = I->second;
         DeclContextLookupResult R = List.getLookupResult();
-        for (NamedDecl *D : R)
-          if (D->getTranslationUnitDecl() == MostRecentTU)
+        for (NamedDecl *D : R){
+          if (D->getTranslationUnitDecl() == MostRecentTU){
+            llvm::errs()<<"Check 4\n";
             List.remove(D);
+          }
+        }
         if (List.isNull())
           Map->erase(I);
       }
@@ -225,6 +235,25 @@ static CodeGenerator *getCodeGen(FrontendAction *Act) {
   if (!WrappedAct->hasIRSupport())
     return nullptr;
   return static_cast<CodeGenAction *>(WrappedAct)->getCodeGenerator();
+}
+
+void IncrementalParser::Restore (PartialTranslationUnit &PTU){
+   TranslationUnitDecl *MostRecentTU = PTU.TUPart;
+   TranslationUnitDecl *FirstTU = MostRecentTU->getFirstDecl();
+   if (StoredDeclsMap *Map = FirstTU->getLookupPtr()) {
+      for (auto I = Map->begin(); I != Map->end(); ++I) {
+        StoredDeclsList &List = I->second;
+        DeclContextLookupResult R = List.getLookupResult();
+        for (NamedDecl *D : R){
+          if (D->getTranslationUnitDecl() == MostRecentTU){
+            llvm::errs()<<"Check Restore 1\n";
+            List.remove(D);
+          }
+        }
+        if (List.isNull())
+          Map->erase(I);
+      }
+    } 
 }
 
 llvm::Expected<PartialTranslationUnit &>

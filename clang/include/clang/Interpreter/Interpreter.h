@@ -56,6 +56,7 @@ public:
   static llvm::Expected<std::unique_ptr<Interpreter>>
   create(std::unique_ptr<CompilerInstance> CI);
   const CompilerInstance *getCompilerInstance() const;
+  void Restore(PartialTranslationUnit &);
   llvm::Expected<PartialTranslationUnit &> Parse(llvm::StringRef Code);
   llvm::Error Execute(PartialTranslationUnit &T);
   llvm::Error ParseAndExecute(llvm::StringRef Code) {
@@ -64,6 +65,20 @@ public:
       return PTU.takeError();
     if (PTU->TheModule)
       return Execute(*PTU);
+    return llvm::Error::success();
+  }
+  
+  llvm::Error TestErrorRecovery(llvm::StringRef input) {
+    llvm::errs()<<"Checking PTU before : ";
+    auto PTU = Parse(input);
+    Restore(*PTU);
+    /*TranslationUnitDecl *MostRecentTU = PTU.TUPart;
+    TranslationUnitDecl *FirstTU = MostRecentTU->getFirstDecl();
+    if (FirstTU->getLookupPtr() !=NULL)
+    	llvm::errs()<<"PTU Not Null \n";
+    Restore(PTU);  
+    if (FirstTU->getLookupPtr() ==NULL)
+    	llvm::errs()<<"PTU Null \n";*/
     return llvm::Error::success();
   }
 

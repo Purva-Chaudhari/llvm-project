@@ -22,6 +22,8 @@
 #include "llvm/Support/Signals.h"
 #include "llvm/Support/TargetSelect.h" // llvm::Initialize*
 
+static llvm::cl::opt<bool> OptRecovery("recovery",
+				        llvm::cl::Hidden);
 static llvm::cl::list<std::string>
     ClangArgs("Xcc", llvm::cl::ZeroOrMore,
               llvm::cl::desc("Argument to pass to the CompilerInvocation"),
@@ -84,6 +86,17 @@ int main(int argc, const char **argv) {
   CI->LoadRequestedPlugins();
 
   auto Interp = ExitOnErr(clang::Interpreter::create(std::move(CI)));
+  bool recovery = true;
+  if (OptRecovery){
+    llvm::errs()<<"In main clang-repl checking recovery : "<<recovery<<" checked";
+    for (const std::string &input : OptInputs) {
+       if(auto Err = Interp->TestErrorRecovery(input)){	 // here input is say `address-constant.c`
+      	 llvm::logAllUnhandledErrors(std::move(Err), llvm::errs(), "error: ");
+      	 llvm::errs()<<"This is true";
+      	 }
+      //llvm::logAllUnhandledErrors(std::move(Err), llvm::errs(), "error: ");
+    }
+  }
   for (const std::string &input : OptInputs) {
     if (auto Err = Interp->ParseAndExecute(input))
       llvm::logAllUnhandledErrors(std::move(Err), llvm::errs(), "error: ");

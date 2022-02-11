@@ -196,6 +196,9 @@ const CompilerInstance *Interpreter::getCompilerInstance() const {
   return IncrParser->getCI();
 }
 
+void Interpreter::Restore(PartialTranslationUnit &PTU){
+	llvm::errs()<<"void function";
+}
 llvm::Expected<PartialTranslationUnit &>
 Interpreter::Parse(llvm::StringRef Code) {
   return IncrParser->Parse(Code);
