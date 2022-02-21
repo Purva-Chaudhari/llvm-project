@@ -1,2 +1,5 @@
-// RUN:   clang-repl -recovery -Xcc "-fsyntax-only -verify ../Sema/address-constant.c"
+// RUN: clang-repl "int i = 10;" 
+// RUN: clang-repl "int i = 10;"
+// RUN: clang-repl -recovery "int j = 10;"  
+// RUN: clang-repl "int j = 10;"
 

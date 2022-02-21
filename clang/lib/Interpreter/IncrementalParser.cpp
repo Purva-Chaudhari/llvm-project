@@ -238,6 +238,7 @@ static CodeGenerator *getCodeGen(FrontendAction *Act) {
 }
 
 void IncrementalParser::Restore (PartialTranslationUnit &PTU){
+  llvm::errs()<<"Inside Restore in Incremental Parser ";
    TranslationUnitDecl *MostRecentTU = PTU.TUPart;
    TranslationUnitDecl *FirstTU = MostRecentTU->getFirstDecl();
    if (StoredDeclsMap *Map = FirstTU->getLookupPtr()) {

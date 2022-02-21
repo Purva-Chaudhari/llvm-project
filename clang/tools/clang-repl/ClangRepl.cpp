@@ -86,32 +86,36 @@ int main(int argc, const char **argv) {
   CI->LoadRequestedPlugins();
 
   auto Interp = ExitOnErr(clang::Interpreter::create(std::move(CI)));
-  bool recovery = true;
+  
   if (OptRecovery){
-    llvm::errs()<<"In main clang-repl checking recovery : "<<recovery<<" checked";
+    llvm::errs()<<"In main clang-repl checking recovery : ";
     for (const std::string &input : OptInputs) {
-       if(auto Err = Interp->TestErrorRecovery(input)){	 // here input is say `address-constant.c`
-      	 llvm::logAllUnhandledErrors(std::move(Err), llvm::errs(), "error: ");
-      	 llvm::errs()<<"This is true";
-      	 }
-      //llvm::logAllUnhandledErrors(std::move(Err), llvm::errs(), "error: ");
+      llvm::errs()<<"Inside for loop ";
+      Interp->TestErrorRecovery(input); // here input is say `address-constant.c`
+         
     }
   }
-  for (const std::string &input : OptInputs) {
-    if (auto Err = Interp->ParseAndExecute(input))
-      llvm::logAllUnhandledErrors(std::move(Err), llvm::errs(), "error: ");
+  else {
+    for (const std::string &input : OptInputs) {
+      llvm::errs()<<"ClangRepl.cpp forloop 1 \n";
+      if (auto Err = Interp->ParseAndExecute(input)){
+          llvm::errs()<<"Checking value of Err : "<<Err;
+          llvm::logAllUnhandledErrors(std::move(Err), llvm::errs(), "error: ");
+      }
+    }
+
+    if (OptInputs.empty()) {
+      llvm::LineEditor LE("clang-repl");
+      // FIXME: Add LE.setListCompleter
+      while (llvm::Optional<std::string> Line = LE.readLine()) {
+        if (*Line == "quit")
+          break;
+        if (auto Err = Interp->ParseAndExecute(*Line))
+          llvm::logAllUnhandledErrors(std::move(Err), llvm::errs(), "error: ");
+      }
+    }
   }
 
-  if (OptInputs.empty()) {
-    llvm::LineEditor LE("clang-repl");
-    // FIXME: Add LE.setListCompleter
-    while (llvm::Optional<std::string> Line = LE.readLine()) {
-      if (*Line == "quit")
-        break;
-      if (auto Err = Interp->ParseAndExecute(*Line))
-        llvm::logAllUnhandledErrors(std::move(Err), llvm::errs(), "error: ");
-    }
-  }
 
   // Our error handler depends on the Diagnostics object, which we're
   // potentially about to delete. Uninstall the handler now so that any

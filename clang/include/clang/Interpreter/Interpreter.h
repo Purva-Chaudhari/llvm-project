@@ -24,18 +24,19 @@
 #include <memory>
 #include <vector>
 
+#include <type_traits>
+#include <typeinfo>
+#include <cstdlib>
 namespace llvm {
 namespace orc {
 class ThreadSafeContext;
 }
 } // namespace llvm
-
 namespace clang {
 
 class CompilerInstance;
 class IncrementalExecutor;
 class IncrementalParser;
-
 /// Create a pre-configured \c CompilerInstance for incremental processing.
 class IncrementalCompilerBuilder {
 public:
@@ -60,7 +61,8 @@ public:
   llvm::Expected<PartialTranslationUnit &> Parse(llvm::StringRef Code);
   llvm::Error Execute(PartialTranslationUnit &T);
   llvm::Error ParseAndExecute(llvm::StringRef Code) {
-    auto PTU = Parse(Code);
+  auto PTU = Parse(Code);
+    //llvm::errs()<<"Checking PTU TYPE : "<<typeid(PTU).name();
     if (!PTU)
       return PTU.takeError();
     if (PTU->TheModule)
@@ -68,10 +70,39 @@ public:
     return llvm::Error::success();
   }
   
-  llvm::Error TestErrorRecovery(llvm::StringRef input) {
-    llvm::errs()<<"Checking PTU before : ";
+  void TestErrorRecovery(llvm::StringRef input) {
+    llvm::errs()<<"TestErrorRecovery in Interpreter.h ";
     auto PTU = Parse(input);
-    Restore(*PTU);
+    llvm::errs()<<"Checking PTU address : "<<&PTU<<" \n";
+    bool error=true;
+    //llvm::Error::Error() Err ;
+    //llvm::errs()<<"Checking PTU TYPE : "<<typeid(PTU).name();
+    if (!PTU){
+      auto Err = PTU.takeError();
+      llvm::errs()<<"Condition: !PTU\n";
+      error = true;
+    }
+    else if (PTU->TheModule){
+      if (auto Err = Execute(*PTU)){
+        llvm::errs()<<"Condition: PTU->TheModule true\n";
+        error = true;
+      }
+      else{
+        llvm::errs()<<"Condition: PTU->TheModule false\n";
+        error = false;
+      }
+      
+    }
+    else{
+      llvm::errs()<<"Condition: err should be false \n";
+      error = false;
+    }
+    //auto PTU = Parse(input);
+    llvm::errs()<<"Check err is true or false : "<<error<<"\n";
+    if (error == false){
+      llvm::errs()<<" Error is false \n";
+      Restore(*PTU);
+    }
     /*TranslationUnitDecl *MostRecentTU = PTU.TUPart;
     TranslationUnitDecl *FirstTU = MostRecentTU->getFirstDecl();
     if (FirstTU->getLookupPtr() !=NULL)
@@ -79,7 +110,6 @@ public:
     Restore(PTU);  
     if (FirstTU->getLookupPtr() ==NULL)
     	llvm::errs()<<"PTU Null \n";*/
-    return llvm::Error::success();
   }
 
   /// \returns the \c JITTargetAddress of a \c GlobalDecl. This interface uses
