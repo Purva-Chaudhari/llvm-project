@@ -22,6 +22,8 @@
 #include "llvm/Support/Signals.h"
 #include "llvm/Support/TargetSelect.h" // llvm::Initialize*
 
+static llvm::cl::opt<bool> OptRecovery("recovery",
+                                       llvm::cl::Hidden);
 static llvm::cl::list<std::string>
     ClangArgs("Xcc", llvm::cl::ZeroOrMore,
               llvm::cl::desc("Argument to pass to the CompilerInvocation"),
@@ -49,14 +51,42 @@ static void LLVMErrorHandler(void *UserData, const char *Message,
   exit(GenCrashDiag ? 70 : 1);
 }
 
+static void adjustClangArgs(llvm::cl::list<std::string> &ClangArgs) {
+  // Prepending -c to force the driver to do something if no action was
+  // specified. By prepending we allow users to override the default
+  // action and use other actions in incremental mode.
+  // FIXME: Print proper driver diagnostics if the driver flags are wrong.
+  ClangArgs.insert(ClangArgs.begin() + 1, "-c");
+
+  if (!llvm::is_contained(ClangArgs, " -x") && !OptInputs.empty()) {
+    // We do C++ by default; append right after argv[0] if no "-x" given
+    ClangArgs.push_back("-x");
+    ClangArgs.push_back("c++");
+  }
+
+  // Put a dummy C++ file on to ensure there's at least one compile job for the
+  // driver to construct.
+  ClangArgs.push_back("<<< inputs >>>");
+}
+
 llvm::ExitOnError ExitOnErr;
 int main(int argc, const char **argv) {
   ExitOnErr.setBanner("clang-repl: ");
   llvm::cl::ParseCommandLineOptions(argc, argv);
 
+  // If we don't know ClangArgv0 or the address of main() at this point, try
+  // to guess it anyway (it's possible on some platforms).
+  std::string MainExecutableName =
+      llvm::sys::fs::getMainExecutable(nullptr, nullptr);
+
+  ClangArgs.insert(ClangArgs.begin(), MainExecutableName.c_str());
+
+  adjustClangArgs(ClangArgs);
+
   std::vector<const char *> ClangArgv(ClangArgs.size());
   std::transform(ClangArgs.begin(), ClangArgs.end(), ClangArgv.begin(),
                  [](const std::string &s) -> const char * { return s.data(); });
+
   llvm::InitializeNativeTarget();
   llvm::InitializeNativeTargetAsmPrinter();
 
@@ -84,9 +114,26 @@ int main(int argc, const char **argv) {
   CI->LoadRequestedPlugins();
 
   auto Interp = ExitOnErr(clang::Interpreter::create(std::move(CI)));
-  for (const std::string &input : OptInputs) {
-    if (auto Err = Interp->ParseAndExecute(input))
-      llvm::logAllUnhandledErrors(std::move(Err), llvm::errs(), "error: ");
+
+  if (OptRecovery) {
+    assert(OptInputs.size() == 1 && "We only support a single input for now");
+    llvm::StringRef File = OptInputs[0];
+    // Parse first time.
+    auto PTU = Interp->Parse("#include \"" + File.str() + "\"");
+    if (auto Err = PTU.takeError())
+      llvm::logAllUnhandledErrors(std::move(Err), llvm::errs(), "recovery: ");
+
+    // Restore logic goes here:
+    Interp->Restore(*PTU);
+    // Re-parseing the same file should be ok.
+    PTU = Interp->Parse("#include \"" + File.str() + "\"");
+    if (auto Err = PTU.takeError())
+      llvm::logAllUnhandledErrors(std::move(Err), llvm::errs(), "recovery: ");
+  } else {
+    for (const std::string &input : OptInputs) {
+      if (auto Err = Interp->ParseAndExecute(input))
+        llvm::logAllUnhandledErrors(std::move(Err), llvm::errs(), "error: ");
+    }
   }
 
   if (OptInputs.empty()) {

@@ -23,6 +23,7 @@
 
 #include <list>
 #include <memory>
+
 namespace llvm {
 class LLVMContext;
 }
@@ -62,6 +63,7 @@ public:
   ~IncrementalParser();
 
   const CompilerInstance *getCI() const { return CI.get(); }
+  void Restore (PartialTranslationUnit & PTU);
 
   /// Parses incremental input by creating an in-memory file.
   ///\returns a \c PartialTranslationUnit which holds information about the
