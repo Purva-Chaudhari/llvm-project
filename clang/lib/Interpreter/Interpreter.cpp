@@ -123,6 +123,30 @@ CreateCI(const llvm::opt::ArgStringList &Argv) {
 
 llvm::Expected<std::unique_ptr<CompilerInstance>>
 IncrementalCompilerBuilder::create(std::vector<const char *> &ClangArgv) {
+
+  // If we don't know ClangArgv0 or the address of main() at this point, try
+  // to guess it anyway (it's possible on some platforms).
+  std::string MainExecutableName =
+      llvm::sys::fs::getMainExecutable(nullptr, nullptr);
+
+  ClangArgv.insert(ClangArgv.begin(), MainExecutableName.c_str());
+
+  // Prepending -c to force the driver to do something if no action was
+  // specified. By prepending we allow users to override the default
+  // action and use other actions in incremental mode.
+  // FIXME: Print proper driver diagnostics if the driver flags are wrong.
+  ClangArgv.insert(ClangArgv.begin() + 1, "-c");
+
+  if (!llvm::is_contained(ClangArgv, " -x")) {
+    // We do C++ by default; append right after argv[0] if no "-x" given
+    ClangArgv.push_back("-x");
+    ClangArgv.push_back("c++");
+  }
+
+  // Put a dummy C++ file on to ensure there's at least one compile job for the
+  // driver to construct.
+  ClangArgv.push_back("<<< inputs >>>");
+
   // Buffer diagnostics from argument parsing so that we can output them using a
   // well formed diagnostic object.
   IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());

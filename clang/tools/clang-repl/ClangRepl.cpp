@@ -51,37 +51,10 @@ static void LLVMErrorHandler(void *UserData, const char *Message,
   exit(GenCrashDiag ? 70 : 1);
 }
 
-static void adjustClangArgs(llvm::cl::list<std::string> &ClangArgs) {
-  // Prepending -c to force the driver to do something if no action was
-  // specified. By prepending we allow users to override the default
-  // action and use other actions in incremental mode.
-  // FIXME: Print proper driver diagnostics if the driver flags are wrong.
-  ClangArgs.insert(ClangArgs.begin() + 1, "-c");
-
-  if (!llvm::is_contained(ClangArgs, " -x") && !OptInputs.empty()) {
-    // We do C++ by default; append right after argv[0] if no "-x" given
-    ClangArgs.push_back("-x");
-    ClangArgs.push_back("c++");
-  }
-
-  // Put a dummy C++ file on to ensure there's at least one compile job for the
-  // driver to construct.
-  ClangArgs.push_back("<<< inputs >>>");
-}
-
 llvm::ExitOnError ExitOnErr;
 int main(int argc, const char **argv) {
   ExitOnErr.setBanner("clang-repl: ");
   llvm::cl::ParseCommandLineOptions(argc, argv);
-
-  // If we don't know ClangArgv0 or the address of main() at this point, try
-  // to guess it anyway (it's possible on some platforms).
-  std::string MainExecutableName =
-      llvm::sys::fs::getMainExecutable(nullptr, nullptr);
-
-  ClangArgs.insert(ClangArgs.begin(), MainExecutableName.c_str());
-
-  adjustClangArgs(ClangArgs);
 
   std::vector<const char *> ClangArgv(ClangArgs.size());
   std::transform(ClangArgs.begin(), ClangArgs.end(), ClangArgv.begin(),
