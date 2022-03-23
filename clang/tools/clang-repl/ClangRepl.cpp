@@ -76,7 +76,7 @@ int main(int argc, const char **argv) {
 
   // FIXME: Investigate if we could use runToolOnCodeWithArgs from tooling. It
   // can replace the boilerplate code for creation of the compiler instance.
-  auto CI = ExitOnErr(clang::IncrementalCompilerBuilder::create(ClangArgv));
+  auto CI = ExitOnErr(clang::IncrementalCompilerBuilder::create(ClangArgv, OptRecovery));
 
   // Set an error handler, so that any LLVM backend diagnostics go through our
   // error handler.
@@ -104,6 +104,7 @@ int main(int argc, const char **argv) {
       llvm::logAllUnhandledErrors(std::move(Err), llvm::errs(), "recovery: ");
   } else {
     for (const std::string &input : OptInputs) {
+      llvm::errs()<<"Checking string : "<<input<<"\n";
       if (auto Err = Interp->ParseAndExecute(input))
         llvm::logAllUnhandledErrors(std::move(Err), llvm::errs(), "error: ");
     }

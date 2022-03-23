@@ -168,6 +168,9 @@ IncrementalParser::ParseOrWrapTopLevelDecl() {
   }
 
   Parser::DeclGroupPtrTy ADecl;
+  
+  llvm::errs()<<"Check 1.A1 "<<" \n";
+  
   for (bool AtEOF = P->ParseFirstTopLevelDecl(ADecl); !AtEOF;
        AtEOF = P->ParseTopLevelDecl(ADecl)) {
     // If we got a null return and something *was* parsed, ignore it.  This
@@ -246,7 +249,6 @@ void IncrementalParser::Restore (PartialTranslationUnit &PTU){
         DeclContextLookupResult R = List.getLookupResult();
         for (NamedDecl *D : R){
           if (D->getTranslationUnitDecl() == MostRecentTU){
-            llvm::errs()<<"Check Restore 1\n";
             List.remove(D);
           }
         }

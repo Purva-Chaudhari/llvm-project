@@ -122,7 +122,8 @@ CreateCI(const llvm::opt::ArgStringList &Argv) {
 } // anonymous namespace
 
 llvm::Expected<std::unique_ptr<CompilerInstance>>
-IncrementalCompilerBuilder::create(std::vector<const char *> &ClangArgv) {
+IncrementalCompilerBuilder::create(std::vector<const char *> &ClangArgv,
+                                   bool isTestRecovery/*=false*/) {
 
   // If we don't know ClangArgv0 or the address of main() at this point, try
   // to guess it anyway (it's possible on some platforms).

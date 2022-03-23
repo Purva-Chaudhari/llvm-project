@@ -40,7 +40,7 @@ class IncrementalParser;
 class IncrementalCompilerBuilder {
 public:
   static llvm::Expected<std::unique_ptr<CompilerInstance>>
-  create(std::vector<const char *> &ClangArgv);
+  create(std::vector<const char *> &ClangArgv, bool isTestRecovery=false);
 };
 
 /// Provides top-level interfaces for incremental compilation and execution.
@@ -56,7 +56,7 @@ public:
   static llvm::Expected<std::unique_ptr<Interpreter>>
   create(std::unique_ptr<CompilerInstance> CI);
   const CompilerInstance *getCompilerInstance() const;
-  void Restore(PartialTranslationUnit &);
+  void Restore(clang::PartialTranslationUnit&);
   llvm::Expected<PartialTranslationUnit &> Parse(llvm::StringRef Code);
   llvm::Error Execute(PartialTranslationUnit &T);
   llvm::Error ParseAndExecute(llvm::StringRef Code) {
