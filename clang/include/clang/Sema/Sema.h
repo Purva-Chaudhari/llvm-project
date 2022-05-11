@@ -9384,13 +9384,15 @@ public:
     GlobalEagerInstantiationScope(Sema &S, bool Enabled)
         : S(S), Enabled(Enabled) {
       if (!Enabled) return;
-
+      llvm::errs()<<"PRINT THIS\n";
       SavedPendingInstantiations.swap(S.PendingInstantiations);
       SavedVTableUses.swap(S.VTableUses);
     }
 
     void perform() {
+      llvm::errs()<<"Perform \n";
       if (Enabled) {
+        llvm::errs()<<"Performed Yes \n";
         S.DefineUsedVTables();
         S.PerformPendingInstantiations();
       }
@@ -9400,12 +9402,15 @@ public:
       if (!Enabled) return;
 
       // Restore the set of pending vtables.
+      S.DefineUsedVTables();
+      S.PerformPendingInstantiations();
       assert(S.VTableUses.empty() &&
              "VTableUses should be empty before it is discarded.");
       S.VTableUses.swap(SavedVTableUses);
 
       // Restore the set of pending implicit instantiations.
       if (S.TUKind != TU_Prefix || !S.LangOpts.PCHInstantiateTemplates) {
+        llvm::errs()<<"Should be "<<S.PendingInstantiations.size()<<"\n";
         assert(S.PendingInstantiations.empty() &&
                "PendingInstantiations should be empty before it is discarded.");
         S.PendingInstantiations.swap(SavedPendingInstantiations);
@@ -9455,7 +9460,7 @@ public:
     std::deque<PendingImplicitInstantiation>
         SavedPendingLocalImplicitInstantiations;
   };
-
+  
   /// A helper class for building up ExtParameterInfos.
   class ExtParameterInfoBuilder {
     SmallVector<FunctionProtoType::ExtParameterInfo, 16> Infos;
